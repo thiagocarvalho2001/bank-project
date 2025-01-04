@@ -11,7 +11,8 @@ void finish_with_error(PGconn *conn)
     exit(1);
 }
 
-PGconn *connect_to_db(){
+PGconn *connect_to_db()
+{
     PGconn *conn = PQconnectdb("host=localhost dbname=" DB_NAME " user=thiago password=thiago");
     if (PQstatus(conn) != CONNECTION_OK)
     {
@@ -35,7 +36,7 @@ void add_customer(PGconn *conn)
     scanf("%s", email);
 
     const char *query = "INSERT INTO \"BankDB\".customers (name, address, phonenumber, email) VALUES ($1, $2, $3, $4)";
-    
+
     PGresult *res;
     res = PQexecParams(conn, query, 4, NULL, (const char *[]){name, address, phone, email}, NULL, NULL, 0);
 
@@ -47,7 +48,8 @@ void add_customer(PGconn *conn)
     PQclear(res);
 }
 
-void create_account(PGconn *conn) {
+void create_account(PGconn *conn)
+{
     int customer_id;
     int accountid;
     char account_type[10];
@@ -76,8 +78,9 @@ void create_account(PGconn *conn) {
     PGresult *res;
 
     const char *values[] = {accountid_str, customer_id_str, account_type, initial_balance_str};
-    res = PQexecParams(conn, query, 4, NULL, values, NULL, NULL, 0); 
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+    res = PQexecParams(conn, query, 4, NULL, values, NULL, NULL, 0);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK)
+    {
         finish_with_error(conn);
     }
     printf("Account created!\n");
@@ -135,7 +138,9 @@ void view_accounts(PGconn *conn)
             printf("\n");
         }
         PQclear(res);
-    }else{
+    }
+    else
+    {
         printf("Enter account ID: ");
         scanf("%d", &account_id);
 
@@ -207,7 +212,8 @@ void deposit(PGconn *conn)
     PQclear(res);
 }
 
-void withdraw(PGconn *conn) {
+void withdraw(PGconn *conn)
+{
     int account_id;
     double amount;
     char amount_str[20];
@@ -227,12 +233,14 @@ void withdraw(PGconn *conn) {
 
     PGresult *res = PQexecParams(conn, balance_query, 1, NULL, balance_param, NULL, NULL, 0);
 
-    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+    if (PQresultStatus(res) != PGRES_TUPLES_OK)
+    {
         finish_with_error(conn);
     }
 
     int nrows = PQntuples(res);
-    if (nrows == 0) {
+    if (nrows == 0)
+    {
         printf("Account not found.\n");
         PQclear(res);
         return;
@@ -241,7 +249,8 @@ void withdraw(PGconn *conn) {
     const char *balance_str = PQgetvalue(res, 0, 0);
     double current_balance = atof(balance_str);
 
-    if (current_balance < amount) {
+    if (current_balance < amount)
+    {
         printf("Insufficient funds. Current balance: %.2f\n", current_balance);
         PQclear(res);
         return;
@@ -252,7 +261,8 @@ void withdraw(PGconn *conn) {
 
     res = PQexecParams(conn, update_query, 2, NULL, update_param, NULL, NULL, 0);
 
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+    if (PQresultStatus(res) != PGRES_COMMAND_OK)
+    {
         finish_with_error(conn);
     }
 
@@ -260,7 +270,8 @@ void withdraw(PGconn *conn) {
     PQclear(res);
 }
 
-void transfer(PGconn *conn){
+void transfer(PGconn *conn)
+{
     int from_account, to_account;
     double amount;
     char from_account_str[20];
@@ -280,19 +291,19 @@ void transfer(PGconn *conn){
     snprintf(to_account_str, sizeof(to_account_str), "%d", to_account);
     snprintf(amount_str, sizeof(amount_str), "%.2f", amount);
 
-
     const char *balance_query = "SELECT balance FROM \"BankDB\".accounts WHERE accountid = $1";
     const char *balance_param[1] = {from_account_str};
 
     PGresult *res = PQexecParams(conn, balance_query, 1, NULL, balance_param, NULL, NULL, 0);
-    if(PQresultStatus(res) != PGRES_TUPLES_OK)
+    if (PQresultStatus(res) != PGRES_TUPLES_OK)
     {
         fprintf(stderr, "Error fetching balance: %s\n", PQerrorMessage(conn));
         finish_with_error(conn);
     }
 
     int nrows = PQntuples(res);
-    if(nrows == 0){
+    if (nrows == 0)
+    {
         printf("Source account not found.\n");
         PQclear(res);
         return;
@@ -301,7 +312,8 @@ void transfer(PGconn *conn){
     const char *balance_str = PQgetvalue(res, 0, 0);
     double current_balance = atof(balance_str);
 
-    if(current_balance < amount){
+    if (current_balance < amount)
+    {
         printf("Insufficient funds. Current balance: %.2f\n", current_balance);
         PQclear(res);
         return;
@@ -311,23 +323,173 @@ void transfer(PGconn *conn){
     const char *update_param[2] = {amount_str, from_account_str};
 
     res = PQexecParams(conn, update_query, 2, NULL, update_param, NULL, NULL, 0);
-    if(PQresultStatus(res) != PGRES_COMMAND_OK)
+    if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
         finish_with_error(conn);
     }
 
     const char *att_query = "UPDATE \"BankDB\".accounts set balance = balance + $1 WHERE accountid = $2";
-
     const char *att_param[2] = {amount_str, to_account_str};
+
     res = PQexecParams(conn, att_query, 2, NULL, att_param, NULL, NULL, 0);
-    if(PQresultStatus(res) != PGRES_COMMAND_OK)
+    if (PQresultStatus(res) != PGRES_COMMAND_OK)
+    {
+        fprintf(stderr, "Error: %s\n", PQerrorMessage(conn));
+        finish_with_error(conn);
+    }
+    printf("Transfer successfull!\n");
+    PQclear(res);
+}
+
+void view_customer_details(PGconn *conn)
+{
+    int customer_id;
+    char customer_id_str[20];
+
+    printf("Enter Customer ID: ");
+    scanf("%d", &customer_id);
+
+    snprintf(customer_id_str, sizeof(customer_id_str), "%d", customer_id);
+
+    const char *view_query = "SELECT * FROM \"BankDB\".customers WHERE customerid = $1";
+    const char *view_params[1] = {customer_id_str};
+
+    PGresult *res = PQexecParams(conn, view_query, 1, NULL, view_params, NULL, NULL, 0);
+
+    if (PQresultStatus(res) != PGRES_TUPLES_OK)
+    {
+        fprintf(stderr, "Error 1: %s\n", PQerrorMessage(conn));
+        finish_with_error(conn);
+    }
+
+    if (res == NULL)
+    {
+        finish_with_error(conn);
+    }
+
+    int nrows = PQntuples(res);
+    if (nrows == 0)
+    {
+        printf("Customer not found.\n");
+        PQclear(res);
+        return;
+    }
+
+    printf("Customer details: \n");
+    for (int i = 0; i < nrows; i++)
+    {
+        printf("Customer ID: %s\n", PQgetvalue(res, i, 0));
+        printf("Name: %s\n", PQgetvalue(res, i, 1));
+        printf("Address: %s\n", PQgetvalue(res, i, 2));
+        printf("Phone Number: %s\n", PQgetvalue(res, i, 3));
+        printf("Email: %s\n", PQgetvalue(res, i, 4));
+        printf("Created At: %s'\n", PQgetvalue(res, i, 5));
+    }
+    PQclear(res);
+
+    const char *select_query = "SELECT accountid, accounttype, balance FROM \"BankDB\".accounts WHERE customerid = $1";
+    const char *select_params[1] = {customer_id_str};
+
+    res = PQexecParams(conn, select_query, 1, NULL, select_params, NULL, NULL, 0);
+
+    if (PQresultStatus(res) != PGRES_TUPLES_OK || res == NULL)
     {
         fprintf(stderr, "Error: %s\n", PQerrorMessage(conn));
         finish_with_error(conn);
     }
 
-    printf("Transfer successfull!\n");
+    printf("Account details: \n");
+    printf("AccountID | Account Type | Balance \n");
+    for (int i = 0; i < nrows; i++)
+    {
+        printf("%s | %s | %s \n",
+               PQgetvalue(res, i, 0),
+               PQgetvalue(res, i, 1),
+               PQgetvalue(res, i, 2));
+    }
+    PQclear(res);
+}
 
+void view_all_accounts(PGconn *conn)
+{
+    const char *select_query = "SELECT * FROM \"BankDB\".accounts";
+    PGresult *res = PQexecParams(conn, select_query, 0, NULL, NULL, NULL, NULL, 0);
+
+    if (res == NULL)
+    {
+        fprintf(stderr, "Error: %s\n", PQerrorMessage(conn));
+        finish_with_error(conn);
+    }
+
+    int nrows = PQntuples(res);
+    if (nrows == 0)
+    {
+        printf("No accounts found.\n");
+        PQclear(res);
+        return;
+    }
+
+    printf("All accounts: \n");
+    printf("AccountID | CustomerID | Account Type | Balance \n");
+    for (int i = 0; i < nrows; i++)
+    {
+        double balance_acc = atof(PQgetvalue(res, i, 3));
+        printf("%s | %s | %s | %.2f \n",
+               PQgetvalue(res, i, 0),
+               PQgetvalue(res, i, 1),
+               PQgetvalue(res, i, 2),
+               balance_acc);
+    }
+    PQclear(res);
+}
+
+void generate_account_statement(PGconn *conn)
+{
+    int account_id;
+    char start_date[20], end_date[20], account_id_str[20];
+
+    printf("Enter your account ID");
+    scanf("%d", &account_id);
+
+    printf("Enter Start Date (YYYY-MM-DD): ");
+    scanf("%s", start_date);
+
+    printf("Enter End Date (YYYY-MM-DD): ");
+    scanf("%s", end_date);
+
+    snprintf(account_id_str, sizeof(account_id_str), "%d", account_id);
+
+    const char *select_query = "SELECT * FROM \"BankDB\".transactions WHERE accountid = $1 AND timestamp BETWEEN $2 AND $3";
+    const char *select_params[3] = {account_id_str, start_date, end_date};
+
+    PGresult *res = PQexecParams(conn, select_query, 3, NULL, select_params, NULL, NULL, 0);
+    if (res == NULL)
+    {
+        fprintf(stderr, "Error: %s\n", PQerrorMessage(conn));
+        finish_with_error(conn);
+    }
+
+    int nrows = PQntuples(res);
+
+    printf("\nAccount Statement: \n");
+    printf("Transaction ID | Transaction Type | Amount | Timestamp \n");
+    if (nrows == 0)
+    {
+        printf("No transactions found.\n");
+        PQclear(res);
+        return;
+    }else{
+        for (int i = 0; i < nrows; i++)
+        {
+            double amount = atof(PQgetvalue(res, i, 2));
+            printf("%s | %s | %.2f | %s \n",
+            PQgetvalue(res, i, 0),
+            PQgetvalue(res, i, 1),
+            amount,
+            PQgetvalue(res, i, 3));
+        }
+    }
+    PQclear(res);
 }
 
 void main_menu()
@@ -344,7 +506,10 @@ void main_menu()
         printf("4. Deposit Money\n");
         printf("5. Withdraw Money\n");
         printf("6. Transfer Money\n");
-        printf("7. Exit\n");
+        printf("7. View Customer Details\n");
+        printf("8. View All Accounts\n");
+        printf("9. Generate Account Statement\n");
+        printf("10. Exit\n");
         printf("Enter your choice: ");
         scanf("%d", &choice);
 
@@ -369,12 +534,21 @@ void main_menu()
             transfer(conn);
             break;
         case 7:
+            view_customer_details(conn);
+            break;
+        case 8:
+            view_accounts(conn);
+            break;
+        case 9:
+            generate_account_statement(conn);
+            break;
+        case 10:
             printf("Exiting...\n");
             break;
         default:
             printf("Invalid. Try again.\n");
         }
-    } while (choice != 7);
+    } while (choice != 10);
 }
 
 int main()
