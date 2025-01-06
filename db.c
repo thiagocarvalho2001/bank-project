@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <postgresql/libpq-fe.h>
+#include "auth.h"
+#include "audit.h"
 #define DB_NAME "BankDB"
 
 void finish_with_error(PGconn *conn)
@@ -208,7 +210,13 @@ void deposit(PGconn *conn)
         finish_with_error(conn);
     }
 
+    const char *log_query = "INSERT INTO \"BankDB\".auditlogs (userid, event) VALUES ($1, 'Transfer')";
+    const char *log_params[1] = {amount_str};
+
+    res = PQexecParams(conn, query, 1, NULL, log_params, NULL, NULL, 0);
+
     printf("Deposit successfully!\n");
+    log_transf(conn, account_id, "Deposit", amount);
     PQclear(res);
 }
 
@@ -267,6 +275,7 @@ void withdraw(PGconn *conn)
     }
 
     printf("Withdrawal successful!\n");
+    log_transf(conn, account_id, "Withdraw", amount);
     PQclear(res);
 }
 
@@ -335,9 +344,10 @@ void transfer(PGconn *conn)
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
         fprintf(stderr, "Error: %s\n", PQerrorMessage(conn));
-        finish_with_error(conn);
+        finish_with_error(conn);  
     }
     printf("Transfer successfull!\n");
+    log_transf(conn, to_account, "Transfer", amount);
     PQclear(res);
 }
 
@@ -495,6 +505,19 @@ void generate_account_statement(PGconn *conn)
 void main_menu()
 {
     PGconn *conn = connect_to_db();
+    char username[50], password[50], role[10];
+    int authenticated = 0;
+
+    while(!authenticated){
+        printf("Login: \n");
+        printf("Username: ");
+        scanf("%s", username);
+        printf("Password: ");
+        scanf("%s", password);
+
+        authenticated = authenticate_user(conn, username, password, role);
+    }
+
     int choice;
 
     do
@@ -509,7 +532,12 @@ void main_menu()
         printf("7. View Customer Details\n");
         printf("8. View All Accounts\n");
         printf("9. Generate Account Statement\n");
-        printf("10. Exit\n");
+
+        if(strcmp(role, "Admin") == 0){
+            printf("10. Create user\n");
+        }
+
+        printf("11. Exit\n");
         printf("Enter your choice: ");
         scanf("%d", &choice);
 
@@ -537,18 +565,32 @@ void main_menu()
             view_customer_details(conn);
             break;
         case 8:
-            view_accounts(conn);
+            view_all_accounts(conn);
             break;
         case 9:
             generate_account_statement(conn);
             break;
         case 10:
+            if(strcmp(role, "Admin") == 0){
+                char new_username[50], new_password[50], new_role[10];
+                printf("Enter new username: ");
+                scanf("%s", new_username);
+                printf("Enter new password: ");
+                scanf("%s", new_password);
+                printf("Enter new role: ");
+                scanf("%s", new_role);
+                create_user(conn, new_username, new_password, new_role);
+            }else{
+                printf("You are not an admin.\n");
+            };
+            break;
+        case 11:
             printf("Exiting...\n");
             break;
         default:
             printf("Invalid. Try again.\n");
         }
-    } while (choice != 10);
+    } while (choice != 11);
 }
 
 int main()
