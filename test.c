@@ -15,7 +15,7 @@ void finish_with_error(PGconn *conn)
 
 PGconn *connect_to_db()
 {
-    PGconn *conn = PQconnectdb("host=localhost dbname=" DB_NAME " user=thiago password=thiago");
+    PGconn *conn = PQconnectdb("host=localhost dbname=BankDB user=" DB_NAME " password=thiago port=5432 sslmode=disable");
     if (PQstatus(conn) != CONNECTION_OK)
     {
         finish_with_error(conn);

@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <postgresql/libpq-fe.h>
-#include "auth.h"
-
-
+#include "../include/auth.h"
+#include "../include/db.h"
 
 void log_event(PGconn *conn, int user_id, const char *event)
 {   

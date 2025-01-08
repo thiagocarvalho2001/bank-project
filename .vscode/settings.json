@@ -3,6 +3,14 @@
         "libpq-fe.h": "c",
         "stdio.h": "c",
         "stdlib.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "db.h": "c",
+        "postgres.h": "c",
+        "auth.h": "c",
+        "audit.h": "c",
+        "accounts.h": "c",
+        "customers.h": "c",
+        "funcs.h": "c",
+        "error_handling.h": "c"
     }
 }
